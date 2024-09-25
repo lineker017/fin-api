@@ -53,10 +53,67 @@ app.get('/account/:cpf', verifyExistsAccount, (req, res) => {
   return res.json({ data: customer })
 })
 
+// ROTA: Atualizar dado do cliente
+app.put('/account/:cpf', verifyExistsAccount, (req, res) => {
+  const { customer } = req
+  const { name } = req.body as {
+    name: string
+  }
+
+  // Reatribui o valor do nome com o valor vindo do body
+  customer.name = name
+
+  return res.json({ message: 'Account update' })
+})
+
+// Rota: Deleta um cliente
+app.delete('/account/:cpf', verifyExistsAccount, (req, res) => {
+  const { customer } = req
+
+  const balance = getBalance(customer.statement)
+
+  // Verifica se o saldo esta positivo
+  if (balance > 0) {
+    return res
+      .status(400)
+      .json({ message: 'You cannot delete an account having positve funds' })
+  }
+
+  // verifica se o saldo esta negativo
+  if (balance < 0) {
+    return res
+      .status(400)
+      .json({ message: 'You cannot delete an account having negative funds' })
+  }
+
+  const customerIndex = customers.findIndex((c) => c.cpf === customer.cpf)
+
+  if (customerIndex !== -1) customers.splice(customerIndex, 1)
+
+  return res.json({ message: 'Account delected' })
+})
+
 // Rota: Busca o extrato de um cliente
 app.get('/statement/:cpf', verifyExistsAccount, (req, res) => {
   const { customer } = req
   return res.json({ data: customer.statement })
+})
+
+// ROTA: Busca o extrato de um cliente pela data
+app.get('/statement/:cpf/date', verifyExistsAccount, (req, res) => {
+  const { customer } = req
+  const { date } = req.query as { date: string }
+
+  // Formata a hora da data passada pra meia noite
+  const formatDate = new Date(date + ' 00:00')
+  // Filtra os extratos oela data, ignorando o tempo
+  const statements = customer.statement.filter(
+    (statement) =>
+      new Date(statement.createdAT).toDateString() ===
+      new Date(formatDate).toDateString(),
+  )
+
+  return res.json({ data: statements })
 })
 
 // Rota: Deposita um valor a um cliente
